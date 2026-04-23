@@ -34,7 +34,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCJIpNqU_c6LRUVUgdVnguZmSlPmHGcQTY",
@@ -55,7 +55,7 @@
         window.FB_SERVICES = { 
             auth, db, appId, googleProvider,
             signInWithPopup, signOut, onAuthStateChanged, 
-            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query 
+            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch 
         };
     </script>
 
@@ -194,12 +194,30 @@
                     setEditId(null);
                 };
 
+                const requestSort = (key) => {
+                    let direction = 'asc';
+                    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+                        direction = 'desc';
+                    }
+                    setSortConfig({ key, direction });
+                };
+
                 const sortedAndFilteredItems = useMemo(() => {
                     let result = filter === 'All' ? [...items] : items.filter(i => i.cat === filter);
                     if (sortConfig.key) {
                         result.sort((a, b) => {
-                            let valA = (a[sortConfig.key] || "").toString().toLowerCase();
-                            let valB = (b[sortConfig.key] || "").toString().toLowerCase();
+                            let valA = a[sortConfig.key];
+                            let valB = b[sortConfig.key];
+                            
+                            // Normalizar valores para ordenación consistente (strings, booleans)
+                            if (typeof valA === 'boolean') {
+                                valA = valA ? 1 : 0;
+                                valB = valB ? 1 : 0;
+                            } else {
+                                valA = (valA || "").toString().toLowerCase();
+                                valB = (valB || "").toString().toLowerCase();
+                            }
+
                             if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                             return 0;
@@ -220,6 +238,13 @@
                         case "Logística y Nutrición": return "fa-solid fa-apple-whole text-amber-600";
                         default: return "fa-solid fa-circle-info text-slate-400";
                     }
+                };
+
+                const SortIndicator = ({ columnKey }) => {
+                    if (sortConfig.key !== columnKey) return <i className="fa-solid fa-sort ml-1 opacity-20 text-[8px]"></i>;
+                    return sortConfig.direction === 'asc' 
+                        ? <i className="fa-solid fa-sort-up ml-1 text-blue-500"></i> 
+                        : <i className="fa-solid fa-sort-down ml-1 text-blue-500"></i>;
                 };
 
                 if (loading) return (
@@ -312,10 +337,18 @@
                             <table className="w-full text-left border-collapse text-sm min-w-[700px]">
                                 <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 font-bold text-slate-400 dark:text-slate-500 uppercase text-[9px] tracking-widest">
                                     <tr>
-                                        <th className="p-4 cursor-pointer" onClick={()=>setSortConfig({key:'name', direction: sortConfig.direction==='asc'?'desc':'asc'})}>Elemento</th>
-                                        <th className="p-4 text-center">Estado</th>
-                                        <th className="p-4 text-center">Listo</th>
-                                        <th className="p-4">Zona</th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors" onClick={()=>requestSort('name')}>
+                                            Elemento <SortIndicator columnKey="name" />
+                                        </th>
+                                        <th className="p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors" onClick={()=>requestSort('status')}>
+                                            Estado <SortIndicator columnKey="status" />
+                                        </th>
+                                        <th className="p-4 text-center cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors" onClick={()=>requestSort('ready')}>
+                                            Listo <SortIndicator columnKey="ready" />
+                                        </th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors" onClick={()=>requestSort('zone')}>
+                                            Zona <SortIndicator columnKey="zone" />
+                                        </th>
                                         <th className="p-4 text-center">Acciones</th>
                                     </tr>
                                 </thead>
