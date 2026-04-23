@@ -80,7 +80,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -184,24 +184,17 @@
                         setLoading(true);
                         try {
                             const inventoryCol = collection(db, 'artifacts', appId, 'users', user.uid, 'inventory');
-                            
-                            // 1. Borrar existentes
                             const existingDocs = await getDocs(inventoryCol);
                             const deleteBatch = writeBatch(db);
                             existingDocs.forEach(d => deleteBatch.delete(d.ref));
                             await deleteBatch.commit();
 
-                            // 2. Insertar nuevos
                             const addBatch = writeBatch(db);
-                            // Saltar cabecera
                             for (let i = 1; i < lines.length; i++) {
                                 if (!lines[i].trim()) continue;
-                                // Simple parser de CSV (considerando que las comas están dentro de comillas)
                                 const cols = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                                 if (cols.length < 5) continue;
-
                                 const clean = (str) => str.replace(/^"|"$/g, '').trim();
-
                                 const item = {
                                     name: clean(cols[0]),
                                     cat: clean(cols[1]),
@@ -210,7 +203,6 @@
                                     ready: clean(cols[4]).toUpperCase() === 'SI',
                                     timestamp: Date.now() + i
                                 };
-                                
                                 const newDocRef = doc(inventoryCol);
                                 addBatch.set(newDocRef, item);
                             }
@@ -275,7 +267,6 @@
                         result.sort((a, b) => {
                             let valA = a[sortConfig.key];
                             let valB = b[sortConfig.key];
-                            
                             if (typeof valA === 'boolean') {
                                 valA = valA ? 1 : 0;
                                 valB = valB ? 1 : 0;
@@ -283,7 +274,6 @@
                                 valA = (valA || "").toString().toLowerCase();
                                 valB = (valB || "").toString().toLowerCase();
                             }
-
                             if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                             return 0;
@@ -338,14 +328,13 @@
 
                 return (
                     <div className="p-4 md:p-8 max-w-6xl mx-auto fade-in pb-24">
-                        <header className="mb-6 bg-white/80 dark:bg-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-6 header-blur sticky top-4 z-10">
+                        <header className="mb-6 bg-white/80 dark:bg-slate-800/80 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-6 header-blur sticky top-4 z-20 transition-all">
                             <div className="flex items-center gap-4 w-full md:w-auto">
                                 <img src={user.photoURL} className="w-12 h-12 rounded-2xl border-2 border-white dark:border-slate-600 shadow-md" alt="Avatar" />
                                 <div className="flex-1">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-between md:justify-start gap-3">
                                         <h1 className="text-lg font-black text-slate-800 dark:text-white leading-tight">{user.displayName.split(' ')[0]}</h1>
                                         
-                                        {/* BOTONES DE ACCIÓN COMPACTOS */}
                                         <div className="flex gap-1 items-center ml-auto md:ml-0">
                                             <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 w-8 h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:text-blue-500 transition-all" title="Tema">
                                                 {darkMode ? <i className="fa-solid fa-sun text-xs"></i> : <i className="fa-solid fa-moon text-xs"></i>}
@@ -391,11 +380,11 @@
 
                         <section className="mb-6 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all focus-within:shadow-md">
                             <form onSubmit={addItemCloud} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <input type="text" placeholder="Nuevo objeto..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
-                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white" value={newItem.cat} onChange={e=>setNewItem({...newItem, cat: e.target.value})}>
+                                <input type="text" placeholder="Nuevo objeto..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-medium" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
+                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.cat} onChange={e=>setNewItem({...newItem, cat: e.target.value})}>
                                     {categoriesList.map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
-                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white" value={newItem.zone} onChange={e=>setNewItem({...newItem, zone: e.target.value})}>
+                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.zone} onChange={e=>setNewItem({...newItem, zone: e.target.value})}>
                                     {zonesList.map(z=><option key={z} value={z}>{z}</option>)}
                                 </select>
                                 <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black py-3 mt-auto transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest">
@@ -404,27 +393,56 @@
                             </form>
                         </section>
 
-                        <div className="mb-4">
-                            <div className="flex items-center gap-2 mb-2 ml-1">
-                                <i className="fa-solid fa-filter text-[10px] text-slate-400"></i>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Categoría</span>
+                        {/* FILTROS MULTI-FILA DINÁMICOS */}
+                        <div className="space-y-6 mb-8">
+                            {/* Filtro Categoría */}
+                            <div className="bg-white/40 dark:bg-slate-800/40 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                                <div className="flex items-center gap-2 mb-3 ml-1">
+                                    <i className="fa-solid fa-filter text-[10px] text-blue-500"></i>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Filtrar por Categoría</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button 
+                                        onClick={() => setCatFilter('All')} 
+                                        className={`px-4 py-2 rounded-xl whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${catFilter === 'All' ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}
+                                    >
+                                        Todas
+                                    </button>
+                                    {categoriesList.map(cat => (
+                                        <button 
+                                            key={cat} 
+                                            onClick={() => setCatFilter(cat)} 
+                                            className={`px-4 py-2 rounded-xl whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${catFilter === cat ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-                                {['All', ...categoriesList].map(cat => (
-                                    <button key={cat} onClick={() => setCatFilter(cat)} className={`px-5 py-2.5 rounded-full whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${catFilter === cat ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{cat}</button>
-                                ))}
-                            </div>
-                        </div>
 
-                        <div className="mb-6">
-                            <div className="flex items-center gap-2 mb-2 ml-1">
-                                <i className="fa-solid fa-suitcase text-[10px] text-slate-400"></i>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bolsa / Ubicación</span>
-                            </div>
-                            <div className="flex overflow-x-auto gap-2 pb-2 no-scrollbar">
-                                {['All', ...zonesList].map(zone => (
-                                    <button key={zone} onClick={() => setZoneFilter(zone)} className={`px-5 py-2.5 rounded-full whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${zoneFilter === zone ? 'bg-slate-800 dark:bg-slate-200 dark:text-slate-900 text-white border-slate-800 dark:border-slate-200 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400 hover:text-slate-800 dark:hover:text-slate-200'}`}>{zone}</button>
-                                ))}
+                            {/* Filtro Ubicación */}
+                            <div className="bg-white/40 dark:bg-slate-800/40 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-inner">
+                                <div className="flex items-center gap-2 mb-3 ml-1">
+                                    <i className="fa-solid fa-suitcase text-[10px] text-orange-500"></i>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Filtrar por Bolsa / Ubicación</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <button 
+                                        onClick={() => setZoneFilter('All')} 
+                                        className={`px-4 py-2 rounded-xl whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${zoneFilter === 'All' ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}
+                                    >
+                                        Todas
+                                    </button>
+                                    {zonesList.map(zone => (
+                                        <button 
+                                            key={zone} 
+                                            onClick={() => setZoneFilter(zone)} 
+                                            className={`px-4 py-2 rounded-xl whitespace-nowrap text-[10px] font-black transition-all border uppercase tracking-wider ${zoneFilter === zone ? 'bg-orange-500 text-white border-orange-500 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-400'}`}
+                                        >
+                                            {zone}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
