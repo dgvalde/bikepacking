@@ -27,7 +27,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCJIpNqU_c6LRUVUgdVnguZmSlPmHGcQTY",
@@ -49,7 +49,7 @@
         window.FB_SERVICES = { 
             auth, db, appId, googleProvider,
             signInWithPopup, signOut, onAuthStateChanged, 
-            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query 
+            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch 
         };
     </script>
 
@@ -76,10 +76,41 @@
             const categoriesList = ["Hardware y Almacenaje", "Ropa de Ciclismo", "Sistema de Sueño", "Ropa de Campamento", "Herramientas y Repuestos", "Electrónica", "Salud y Aseo", "Logística y Nutrición"];
             const zonesList = ["Manillar", "Bici", "Cuadro", "Sillín", "Cuerpo", "Frame Bag", "Seat Pack", "Handlebar Roll", "Top Tube Bag", "Portabidones", "Varios"];
 
+            // LISTA ORIGINAL PARA INICIALIZACIÓN RÁPIDA
+            const masterInitialItems = [
+                { cat: "Hardware y Almacenaje", name: "Garmin Edge 840", zone: "Manillar", status: "comprado", ready: false },
+                { cat: "Hardware y Almacenaje", name: "Luces (x1 delantera, x1 trasera)", zone: "Bici", status: "comprado", ready: false },
+                { cat: "Hardware y Almacenaje", name: "Candado ligero (cafe lock)", zone: "Frame Bag", status: "comprado", ready: false },
+                { cat: "Hardware y Almacenaje", name: "Bidones de agua (x2)", zone: "Portabidones", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Handlebar roll", zone: "Handlebar Roll", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Frame bag", zone: "Frame Bag", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Seat pack", zone: "Seat Pack", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Top tube bag", zone: "Top Tube Bag", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Voile straps", zone: "Varios", status: "comprado", ready: true },
+                { cat: "Hardware y Almacenaje", name: "Cinta de pecho / Pulsómetro", zone: "Cuerpo", status: "comprado", ready: false },
+                { cat: "Ropa de Ciclismo", name: "1 Culotte de repuesto", zone: "Seat Pack", status: "comprado", ready: false },
+                { cat: "Ropa de Ciclismo", name: "1 Maillot extra (Merino)", zone: "Seat Pack", status: "comprado", ready: false },
+                { cat: "Ropa de Ciclismo", name: "Chaleco cortavientos / Gilet", zone: "Seat Pack", status: "comprado", ready: false },
+                { cat: "Ropa de Ciclismo", name: "Chaqueta impermeable (Goretex)", zone: "Seat Pack", status: "comprado", ready: true },
+                { cat: "Ropa de Ciclismo", name: "Manguitos / Perneras", zone: "Seat Pack", status: "comprado", ready: true },
+                { cat: "Sistema de Sueño", name: "Tienda de campaña", zone: "Handlebar Roll", status: "comprado", ready: false },
+                { cat: "Sistema de Sueño", name: "Esterilla inflable", zone: "Handlebar Roll", status: "comprado", ready: false },
+                { cat: "Sistema de Sueño", name: "Saco de dormir Quechua S5", zone: "Handlebar Roll", status: "comprado", ready: false },
+                { cat: "Ropa de Campamento", name: "Camiseta térmica Merino ML", zone: "Seat Pack", status: "comprar", ready: false },
+                { cat: "Ropa de Campamento", name: "Chanclas tipo pala", zone: "Seat Pack", status: "comprar", ready: false },
+                { cat: "Ropa de Campamento", name: "Chaqueta de plumas (Patagonia)", zone: "Seat Pack", status: "comprado", ready: true },
+                { cat: "Herramientas y Repuestos", name: "Mini bomba", zone: "Frame Bag", status: "comprado", ready: true },
+                { cat: "Herramientas y Repuestos", name: "Kit reparación tubeless + CO2", zone: "Frame Bag", status: "comprado", ready: true },
+                { cat: "Herramientas y Repuestos", name: "Cámara TPU (Tubolito)", zone: "Frame Bag", status: "comprado", ready: true },
+                { cat: "Electrónica", name: "Powerbank", zone: "Top Tube Bag", status: "comprado", ready: false },
+                { cat: "Salud y Aseo", name: "Botiquín supervivencia", zone: "Frame Bag", status: "comprado", ready: true }
+            ];
+
             const App = () => {
                 const [items, setItems] = useState([]);
                 const [user, setUser] = useState(null);
                 const [loading, setLoading] = useState(true);
+                const [isSeeding, setIsSeeding] = useState(false);
                 const [filter, setFilter] = useState('All');
                 const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
                 const [newItem, setNewItem] = useState({ name: '', cat: 'Hardware y Almacenaje', zone: 'Frame Bag' });
@@ -90,7 +121,7 @@
                 const [aiAdvice, setAiAdvice] = useState(null);
                 const [isAiLoading, setIsAiLoading] = useState(false);
 
-                const { auth, db, appId, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } = window.FB_SERVICES;
+                const { auth, db, appId, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch } = window.FB_SERVICES;
 
                 useEffect(() => {
                     if (darkMode) {
@@ -102,7 +133,6 @@
                     }
                 }, [darkMode]);
 
-                // Gestión de sesión
                 useEffect(() => {
                     const unsubscribe = onAuthStateChanged(auth, (u) => {
                         setUser(u);
@@ -111,59 +141,70 @@
                     return () => unsubscribe();
                 }, []);
 
-                // Suscripción a datos privados del usuario
                 useEffect(() => {
                     if (!user) {
                         setItems([]);
                         return;
                     }
-                    
-                    // Path privado: /artifacts/{appId}/users/{userId}/inventory
                     const inventoryCol = collection(db, 'artifacts', appId, 'users', user.uid, 'inventory');
-                    
-                    const unsubscribe = onSnapshot(inventoryCol, 
-                        (snapshot) => {
-                            const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                            setItems(data);
-                            setLoading(false);
-                        }, 
-                        (error) => { 
-                            console.error("Firestore Error:", error); 
-                            setLoading(false); 
-                        }
-                    );
+                    const unsubscribe = onSnapshot(inventoryCol, (snapshot) => {
+                        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setItems(data);
+                        setLoading(false);
+                    }, (error) => { 
+                        console.error("Firestore Error:", error); 
+                        setLoading(false); 
+                    });
                     return () => unsubscribe();
                 }, [user]);
+
+                // FUNCIÓN PARA CARGAR LA LISTA INICIAL EN MASA
+                const seedInventory = async () => {
+                    if (!user || isSeeding) return;
+                    if (!confirm("¿Quieres cargar la lista maestra de bikepacking en tu cuenta?")) return;
+                    
+                    setIsSeeding(true);
+                    try {
+                        const inventoryCol = collection(db, 'artifacts', appId, 'users', user.uid, 'inventory');
+                        
+                        // Usamos Batch para mayor eficiencia (máximo 500 docs por batch)
+                        const batch = writeBatch(db);
+                        masterInitialItems.forEach((item) => {
+                            const newDocRef = doc(inventoryCol);
+                            batch.set(newDocRef, { ...item, timestamp: Date.now() });
+                        });
+                        
+                        await batch.commit();
+                    } catch (error) {
+                        console.error("Error al poblar base de datos:", error);
+                    } finally {
+                        setIsSeeding(false);
+                    }
+                };
 
                 const handleLogin = async () => {
                     try {
                         await signInWithPopup(auth, googleProvider);
-                    } catch (err) {
-                        console.error("Login Error:", err);
-                    }
+                    } catch (err) { console.error("Login Error:", err); }
                 };
 
                 const handleLogout = () => signOut(auth);
 
                 const callGemini = async (prompt) => {
-                    const apiKey = ""; // David: Pega aquí tu clave de Google AI Studio
-                    if (!apiKey) return "IA no configurada. Añade la API Key de Gemini.";
-                    
-                    let retries = 0;
-                    while (retries < 3) {
-                        try {
-                            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    contents: [{ parts: [{ text: prompt }] }],
-                                    systemInstruction: { parts: [{ text: "Eres un experto en bikepacking. Analiza inventarios y da consejos breves." }] }
-                                })
-                            });
-                            const result = await response.json();
-                            return result.candidates?.[0]?.content?.parts?.[0]?.text;
-                        } catch (err) { retries++; }
-                    }
+                    const apiKey = ""; // Pega aquí tu clave de Google AI Studio
+                    if (!apiKey) return "IA no configurada. Añade la API Key.";
+                    try {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }],
+                                systemInstruction: { parts: [{ text: "Eres un experto en bikepacking. Analiza inventarios y da consejos breves." }] }
+                            })
+                        });
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (err) { return "Error en API IA."; }
                 };
 
                 const analyzeInventoryWithAI = async () => {
@@ -240,7 +281,7 @@
                 if (loading) return (
                     <div className="flex flex-col items-center justify-center min-h-screen text-slate-400">
                         <i className="fa-solid fa-circle-notch fa-spin text-4xl mb-4"></i>
-                        <p className="font-bold uppercase tracking-widest text-xs">Cargando perfil...</p>
+                        <p className="font-bold uppercase tracking-widest text-xs">Sincronizando...</p>
                     </div>
                 );
 
@@ -251,7 +292,7 @@
                                 <i className="fa-solid fa-bicycle text-white text-4xl"></i>
                             </div>
                             <h1 className="text-2xl font-black text-slate-800 dark:text-white mb-2 tracking-tight">Bikepacking Cloud</h1>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Sincroniza tu inventario entre todos tus dispositivos de forma segura.</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Entra con tu cuenta de Google para sincronizar tu inventario.</p>
                             <button 
                                 onClick={handleLogin}
                                 className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 py-3 rounded-xl flex items-center justify-center gap-3 font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm active:scale-95"
@@ -260,7 +301,6 @@
                                 Entrar con Google
                             </button>
                         </div>
-                        <footer className="mt-12 text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">David Fernández • Essen 2026</footer>
                     </div>
                 );
 
@@ -273,7 +313,7 @@
                                     <div className="flex items-center justify-between md:justify-start gap-3">
                                         <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Hola, {user.displayName.split(' ')[0]}</h1>
                                         <div className="flex gap-1">
-                                            <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors">
+                                            <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors" title="Tema">
                                                 {darkMode ? <i className="fa-solid fa-sun"></i> : <i className="fa-solid fa-moon"></i>}
                                             </button>
                                             <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-500 transition-colors" title="Cerrar sesión">
@@ -300,6 +340,21 @@
                                 </div>
                             </div>
                         </header>
+
+                        {/* BOTÓN DE INICIALIZACIÓN MÁGICA ✨ */}
+                        {items.length === 0 && !loading && (
+                            <button 
+                                onClick={seedInventory}
+                                disabled={isSeeding}
+                                className="w-full mb-6 bg-amber-50 dark:bg-amber-900/20 border-2 border-dashed border-amber-200 dark:border-amber-700 p-8 rounded-2xl text-center hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all group"
+                            >
+                                <div className="bg-amber-500 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg group-hover:scale-110 transition-transform">
+                                    {isSeeding ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-bolt-lightning"></i>}
+                                </div>
+                                <h3 className="text-amber-800 dark:text-amber-400 font-bold uppercase tracking-widest text-xs">Tu inventario está vacío</h3>
+                                <p className="text-amber-600 dark:text-amber-500 text-sm mt-1">Pulsa aquí para importar automáticamente la lista maestra original.</p>
+                            </button>
+                        )}
 
                         <section className="mb-8 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg border-l-8 border-l-blue-400">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
