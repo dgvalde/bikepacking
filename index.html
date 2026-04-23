@@ -2,8 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bikepacking Cloud - David</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bikepacking Cloud</title>
+    
+    <!-- Configuración PWA y Mobile -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Bikepacking Cloud","short_name":"Bikepacking","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3774/3774270.png","sizes":"512x512","type":"image/png"}]}'>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -27,7 +34,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCJIpNqU_c6LRUVUgdVnguZmSlPmHGcQTY",
@@ -43,13 +50,12 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const googleProvider = new GoogleAuthProvider();
-        
         const appId = 'bikepacking-inventory-david';
 
         window.FB_SERVICES = { 
             auth, db, appId, googleProvider,
             signInWithPopup, signOut, onAuthStateChanged, 
-            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch 
+            collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query 
         };
     </script>
 
@@ -58,8 +64,16 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        
+        /* Native App Feel */
+        body { 
+            transition: background-color 0.3s ease, color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            overscroll-behavior-y: contain;
+        }
+        input, select, textarea { user-select: text; }
         button:active { transform: scale(0.95); }
-        body { transition: background-color 0.3s ease, color 0.3s ease; }
     </style>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen">
@@ -85,7 +99,7 @@
                 const [editId, setEditId] = useState(null);
                 const [editForm, setEditForm] = useState(null);
 
-                const { auth, db, appId, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, writeBatch } = window.FB_SERVICES;
+                const { auth, db, appId, googleProvider, signInWithPopup, signOut, onAuthStateChanged, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } = window.FB_SERVICES;
 
                 useEffect(() => {
                     if (darkMode) {
@@ -132,27 +146,18 @@
 
                 const exportToCSV = () => {
                     if (items.length === 0) return;
-                    
-                    // Definir cabeceras
-                    const headers = ["Nombre", "Categoria", "Ubicacion", "Estado", "Listo (Check)"];
-                    
-                    // Mapear items a filas de texto
+                    const headers = ["Nombre", "Categoria", "Ubicacion", "Estado", "Listo"];
                     const rows = items.map(item => [
-                        `"${item.name}"`,
-                        `"${item.cat}"`,
-                        `"${item.zone}"`,
+                        `"${item.name}"`, `"${item.cat}"`, `"${item.zone}"`,
                         item.status === 'comprado' ? "Tengo" : "Comprar",
                         item.ready ? "SI" : "NO"
                     ]);
-
-                    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+                    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
-                    
                     const link = document.createElement("a");
                     link.setAttribute("href", url);
-                    link.setAttribute("download", `bikepacking_david_${new Date().toISOString().split('T')[0]}.csv`);
-                    link.style.visibility = 'hidden';
+                    link.setAttribute("download", `bikepacking_inventory_${new Date().toISOString().split('T')[0]}.csv`);
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -193,10 +198,8 @@
                     let result = filter === 'All' ? [...items] : items.filter(i => i.cat === filter);
                     if (sortConfig.key) {
                         result.sort((a, b) => {
-                            let valA = a[sortConfig.key];
-                            let valB = b[sortConfig.key];
-                            if (typeof valA === 'boolean') { valA = valA ? 1 : 0; valB = valB ? 1 : 0; }
-                            else { valA = (valA || "").toString().toLowerCase(); valB = (valB || "").toString().toLowerCase(); }
+                            let valA = (a[sortConfig.key] || "").toString().toLowerCase();
+                            let valB = (b[sortConfig.key] || "").toString().toLowerCase();
                             if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                             return 0;
@@ -222,7 +225,7 @@
                 if (loading) return (
                     <div className="flex flex-col items-center justify-center min-h-screen text-slate-400">
                         <i className="fa-solid fa-circle-notch fa-spin text-4xl mb-4"></i>
-                        <p className="font-bold uppercase tracking-widest text-xs">Cargando...</p>
+                        <p className="font-bold uppercase tracking-widest text-[10px]">Sincronizando...</p>
                     </div>
                 );
 
@@ -233,12 +236,9 @@
                                 <i className="fa-solid fa-bicycle text-white text-4xl"></i>
                             </div>
                             <h1 className="text-2xl font-black text-slate-800 dark:text-white mb-2 tracking-tight">Bikepacking Cloud</h1>
-                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">Entra con tu cuenta de Google para gestionar tu inventario.</p>
-                            <button 
-                                onClick={handleLogin}
-                                className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 py-3 rounded-xl flex items-center justify-center gap-3 font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm active:scale-95"
-                            >
-                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 italic">Gestión de inventario para tus rutas</p>
+                            <button onClick={handleLogin} className="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 py-3 rounded-xl flex items-center justify-center gap-3 font-bold text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="G" />
                                 Entrar con Google
                             </button>
                         </div>
@@ -246,60 +246,57 @@
                 );
 
                 return (
-                    <div className="p-4 md:p-8 max-w-6xl mx-auto fade-in pb-20">
+                    <div className="p-4 md:p-8 max-w-6xl mx-auto fade-in pb-24">
                         <header className="mb-6 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div className="flex items-center gap-4 text-center md:text-left w-full md:w-auto">
+                            <div className="flex items-center gap-4 w-full md:w-auto">
                                 <img src={user.photoURL} className="w-14 h-14 rounded-2xl border-2 border-white dark:border-slate-600 shadow-md" alt="Avatar" />
                                 <div className="flex-1">
-                                    <div className="flex items-center justify-between md:justify-start gap-3">
-                                        <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Hola, {user.displayName.split(' ')[0]}</h1>
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">David F.</h1>
                                         <div className="flex gap-1">
-                                            <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors" title="Tema">
+                                            <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
                                                 {darkMode ? <i className="fa-solid fa-sun"></i> : <i className="fa-solid fa-moon"></i>}
                                             </button>
-                                            <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-500 transition-colors" title="Cerrar sesión">
+                                            <button onClick={handleLogout} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-500">
                                                 <i className="fa-solid fa-right-from-bracket"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">Inventario Sincronizado</p>
+                                    <p className="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-1">Sincronización Activa</p>
                                 </div>
                             </div>
                             
                             <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
                                 <div className="grid grid-cols-3 gap-2 w-full md:w-auto">
-                                    <div className="bg-slate-50 dark:bg-slate-700/50 px-4 py-3 rounded-2xl border border-slate-100 dark:border-slate-700 text-center min-w-[70px]">
-                                        <span className="block text-xl font-black text-slate-700 dark:text-slate-200">{items.length}</span>
-                                        <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Total</span>
+                                    <div className="bg-slate-50 dark:bg-slate-700/50 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-700 text-center min-w-[70px]">
+                                        <span className="block text-lg font-black text-slate-700 dark:text-slate-200">{items.length}</span>
+                                        <span className="text-[8px] uppercase font-bold text-slate-400">Total</span>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/30 px-4 py-3 rounded-2xl border border-blue-100 dark:border-blue-900/50 text-center min-w-[70px]">
-                                        <span className="block text-xl font-black text-blue-600 dark:text-blue-400">{items.filter(i=>i.status==='comprado').length}</span>
-                                        <span className="text-[9px] uppercase font-bold text-blue-400 tracking-wider">Tengo</span>
+                                    <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-2 rounded-xl border border-blue-100 dark:border-blue-900/50 text-center min-w-[70px]">
+                                        <span className="block text-lg font-black text-blue-600 dark:text-blue-400">{items.filter(i=>i.status==='comprado').length}</span>
+                                        <span className="text-[8px] uppercase font-bold text-blue-400">Tengo</span>
                                     </div>
-                                    <div className="bg-green-50 dark:bg-green-900/30 px-4 py-3 rounded-2xl border border-green-100 dark:border-green-900/50 text-center min-w-[70px]">
-                                        <span className="block text-xl font-black text-green-600 dark:text-green-400">{items.filter(i=>i.ready).length}</span>
-                                        <span className="text-[9px] uppercase font-bold text-green-400 tracking-wider">Listos</span>
+                                    <div className="bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-xl border border-green-100 dark:border-green-900/50 text-center min-w-[70px]">
+                                        <span className="block text-lg font-black text-green-600 dark:text-green-400">{items.filter(i=>i.ready).length}</span>
+                                        <span className="text-[8px] uppercase font-bold text-green-400">Listos</span>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={exportToCSV}
-                                    className="w-full md:w-auto bg-slate-800 dark:bg-slate-700 text-white px-4 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <i className="fa-solid fa-file-csv text-lg"></i> Exportar
+                                <button onClick={exportToCSV} className="w-full md:w-auto bg-slate-800 dark:bg-slate-700 text-white px-4 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                                    <i className="fa-solid fa-file-csv text-base"></i> CSV
                                 </button>
                             </div>
                         </header>
 
                         <section className="mb-6 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
                             <form onSubmit={addItemCloud} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <input type="text" placeholder="Nuevo objeto..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
+                                <input type="text" placeholder="Nuevo objeto..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
                                 <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white" value={newItem.cat} onChange={e=>setNewItem({...newItem, cat: e.target.value})}>
                                     {categoriesList.map(c=><option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white" value={newItem.zone} onChange={e=>setNewItem({...newItem, zone: e.target.value})}>
                                     {zonesList.map(z=><option key={z} value={z}>{z}</option>)}
                                 </select>
-                                <button type="submit" className="bg-slate-800 dark:bg-blue-600 text-white rounded-xl text-sm font-bold py-3 mt-auto hover:bg-slate-900 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg h-[46px]">
+                                <button type="submit" className="bg-slate-800 dark:bg-blue-600 text-white rounded-xl text-sm font-bold py-3 mt-auto hover:bg-slate-900 transition-all shadow-md">
                                     <i className="fa-solid fa-plus"></i> Añadir
                                 </button>
                             </form>
@@ -307,13 +304,13 @@
 
                         <div className="flex overflow-x-auto gap-2 mb-6 pb-2 no-scrollbar">
                             {['All', ...categoriesList].map(cat => (
-                                <button key={cat} onClick={() => setFilter(cat)} className={`px-5 py-2 rounded-full whitespace-nowrap text-xs font-bold transition-all border ${filter === cat ? 'bg-slate-800 dark:bg-blue-600 text-white border-slate-800 dark:border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>{cat}</button>
+                                <button key={cat} onClick={() => setFilter(cat)} className={`px-5 py-2 rounded-full whitespace-nowrap text-[10px] font-bold transition-all border ${filter === cat ? 'bg-slate-800 dark:bg-blue-600 text-white border-slate-800 dark:border-blue-600 shadow-md scale-105' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>{cat}</button>
                             ))}
                         </div>
 
                         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden overflow-x-auto">
                             <table className="w-full text-left border-collapse text-sm min-w-[700px]">
-                                <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 font-bold text-slate-400 dark:text-slate-500 uppercase text-[10px] tracking-widest">
+                                <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 font-bold text-slate-400 dark:text-slate-500 uppercase text-[9px] tracking-widest">
                                     <tr>
                                         <th className="p-4 cursor-pointer" onClick={()=>setSortConfig({key:'name', direction: sortConfig.direction==='asc'?'desc':'asc'})}>Elemento</th>
                                         <th className="p-4 text-center">Estado</th>
@@ -336,26 +333,26 @@
                                                 ) : (
                                                     <div className="flex items-center gap-3">
                                                         <div className="bg-white dark:bg-slate-700 p-2 rounded-lg shadow-sm border border-slate-100 dark:border-slate-600 flex items-center justify-center w-10 h-10">
-                                                            <i className={`${getCatIconClass(item.cat)} text-lg`}></i>
+                                                            <i className={`${getCatIconClass(item.cat)} text-base`}></i>
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight">{item.name}</p>
-                                                            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-tight">{item.cat}</p>
+                                                            <p className="font-bold text-slate-800 dark:text-slate-200 leading-tight text-sm">{item.name}</p>
+                                                            <p className="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-tight">{item.cat}</p>
                                                         </div>
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="p-4 text-center">
-                                                <button onClick={()=>toggleStatusCloud(item)} className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm transition-all ${item.status==='comprado' ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-red-500 dark:bg-red-600 text-white'}`}>
+                                                <button onClick={()=>toggleStatusCloud(item)} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter shadow-sm transition-all ${item.status==='comprado' ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-red-500 dark:bg-red-600 text-white'}`}>
                                                     {item.status}
                                                 </button>
                                             </td>
                                             <td className="p-4 text-center">
                                                 <button onClick={()=>toggleReadyCloud(item)} className="transition-all">
                                                     {item.ready ? (
-                                                        <i className="fa-solid fa-circle-check text-green-500 text-2xl"></i>
+                                                        <i className="fa-solid fa-circle-check text-green-500 text-xl"></i>
                                                     ) : (
-                                                        <i className="fa-solid fa-circle-exclamation text-yellow-500 dark:text-yellow-600 text-2xl opacity-20 dark:opacity-40 group-hover:opacity-100 transition-opacity"></i>
+                                                        <i className="fa-solid fa-circle-exclamation text-yellow-500 dark:text-yellow-600 text-xl opacity-20 dark:opacity-40 group-hover:opacity-100 transition-opacity"></i>
                                                     )}
                                                 </button>
                                             </td>
@@ -365,7 +362,7 @@
                                                         {zonesList.map(z => <option key={z} value={z}>{z}</option>)}
                                                     </select>
                                                 ) : (
-                                                    <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 uppercase tracking-tighter">
+                                                    <span className="text-[9px] font-black bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 uppercase tracking-tighter italic">
                                                         {item.zone}
                                                     </span>
                                                 )}
