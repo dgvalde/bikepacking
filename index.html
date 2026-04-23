@@ -267,6 +267,7 @@
                         result.sort((a, b) => {
                             let valA = a[sortConfig.key];
                             let valB = b[sortConfig.key];
+                            
                             if (typeof valA === 'boolean') {
                                 valA = valA ? 1 : 0;
                                 valB = valB ? 1 : 0;
@@ -274,6 +275,7 @@
                                 valA = (valA || "").toString().toLowerCase();
                                 valB = (valB || "").toString().toLowerCase();
                             }
+
                             if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                             return 0;
@@ -378,21 +380,6 @@
                             </div>
                         </header>
 
-                        <section className="mb-6 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all focus-within:shadow-md">
-                            <form onSubmit={addItemCloud} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <input type="text" placeholder="Nuevo objeto..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-medium" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
-                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.cat} onChange={e=>setNewItem({...newItem, cat: e.target.value})}>
-                                    {categoriesList.map(c=><option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.zone} onChange={e=>setNewItem({...newItem, zone: e.target.value})}>
-                                    {zonesList.map(z=><option key={z} value={z}>{z}</option>)}
-                                </select>
-                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black py-3 mt-auto transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest">
-                                    <i className="fa-solid fa-plus"></i> Añadir
-                                </button>
-                            </form>
-                        </section>
-
                         {/* FILTROS MULTI-FILA DINÁMICOS */}
                         <div className="space-y-6 mb-8">
                             {/* Filtro Categoría */}
@@ -446,7 +433,7 @@
                             </div>
                         </div>
 
-                        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden overflow-x-auto">
+                        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden overflow-x-auto mb-8">
                             <table className="w-full text-left border-collapse text-sm min-w-[750px]">
                                 <thead className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 font-black text-slate-400 dark:text-slate-500 uppercase text-[9px] tracking-[0.15em]">
                                     <tr>
@@ -538,6 +525,27 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* SECCIÓN AÑADIR NUEVO OBJETO (AL FINAL) */}
+                        <section className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all focus-within:shadow-md">
+                            <div className="flex items-center gap-2 mb-4 ml-1">
+                                <i className="fa-solid fa-circle-plus text-blue-500"></i>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Añadir Nuevo Elemento</span>
+                            </div>
+                            <form onSubmit={addItemCloud} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <input type="text" placeholder="Ej: Hornillo..." className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition-all font-medium" value={newItem.name} onChange={e=>setNewItem({...newItem, name: e.target.value})} />
+                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.cat} onChange={e=>setNewItem({...newItem, cat: e.target.value})}>
+                                    {categoriesList.map(c=><option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <select className="bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-3 rounded-xl text-sm outline-none dark:text-white font-medium" value={newItem.zone} onChange={e=>setNewItem({...newItem, zone: e.target.value})}>
+                                    {zonesList.map(z=><option key={z} value={z}>{z}</option>)}
+                                </select>
+                                <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black py-3 mt-auto transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 uppercase tracking-widest">
+                                    <i className="fa-solid fa-plus"></i> Añadir
+                                </button>
+                            </form>
+                        </section>
+
                         <footer className="mt-12 flex flex-col items-center gap-3 text-slate-400 dark:text-slate-600 font-bold text-[10px] uppercase tracking-[0.3em]">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-[1px] bg-slate-200 dark:bg-slate-800"></div>
